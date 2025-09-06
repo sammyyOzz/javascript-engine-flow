@@ -1,13 +1,15 @@
 import { useEffect, useRef, useState } from "react";
 import CodeEditor from "./components/code-editor";
 import { Badge } from "./components/ui/badge";
-import TwinArrows from "./components/twin-arrows";
+import TwinArrows from "./components/icons/twin-arrows";
 import type { IHighlightRange } from "./types/code-editor";
 import Navbar from "./components/navbar";
 import { useJsEngineContext } from "./context/js-engine-context";
+import Console from "./components/console";
 
 function App() {
-  const { source, handleSourceChange } = useJsEngineContext();
+  const { source, handleSourceChange, highlightLocation } =
+    useJsEngineContext();
 
   const [editorIsReady, setEditorIsReady] = useState(false);
 
@@ -35,10 +37,19 @@ function App() {
   };
 
   useEffect(() => {
-    if (editorIsReady) {
-      highlightRange({ startLine: 4, startCol: 0, endLine: 6, endCol: 1 });
+    if (!editorIsReady) return;
+
+    if (highlightLocation) {
+      highlightRange({
+        startLine: highlightLocation.start.line,
+        startCol: highlightLocation.start.column,
+        endLine: highlightLocation.end.line,
+        endCol: highlightLocation.end.column,
+      });
+    } else {
+      highlightRange({ startLine: 0, startCol: 0, endLine: 0, endCol: 0 });
     }
-  }, [editorIsReady]);
+  }, [editorIsReady, highlightLocation]);
 
   return (
     <div className="flex flex-col h-screen gap-5 bg-gray-700">
@@ -55,11 +66,7 @@ function App() {
                 onMount={handleMount}
               />
             </div>
-            <div className="h-1/3 bg-black relative">
-              <Badge className="absolute text-md -top-3 left-1/2 -translate-x-1/2 px-2">
-                Console
-              </Badge>
-            </div>
+            <Console />
           </div>
 
           {/* column 2 */}
