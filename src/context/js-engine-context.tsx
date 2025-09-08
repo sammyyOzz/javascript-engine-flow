@@ -3,11 +3,16 @@ import React, { createContext, useContext, useState, useRef } from "react";
 import { parse } from "abstract-syntax-tree";
 import type { ILocation, TCodeSnippetType } from "@/types/abstract-syntax-tree";
 
-interface ExecutionStep {
+interface IExecutionStep {
   node: any;
   index: number;
   type: TCodeSnippetType;
   status: 'pending' | 'executing' | 'completed';
+}
+
+interface ICallStackItem {
+  functionName: string;
+  variables: Record<string, any>;
 }
 
 interface JsEngineContextType {
@@ -15,12 +20,12 @@ interface JsEngineContextType {
   handleSourceChange: (value: string | undefined) => void;
   tree: any;
   parseSource: () => void;
-  callStack: any[];
+  callStack: ICallStackItem[];
   consoleLogs: string[];
   highlightLocation?: ILocation | null;
   
   // step-by-step execution
-  executionSteps: ExecutionStep[];
+  executionSteps: IExecutionStep[];
   currentStepIndex: number;
   isExecuting: boolean;
   canStepForward: boolean;
@@ -54,12 +59,12 @@ export const JsEngineProvider: React.FC<JsEngineProviderProps> = ({
 }) => {
   const [source, setSource] = useState<string | undefined>(simpleCode);
   const [tree, setTree] = useState(null);
-  const [callStack] = useState([]);
+  const [callStack, setCallStack] = useState<ICallStackItem[]>([]);
   const [consoleLogs, setConsoleLogs] = useState<string[]>([]);
   const [highlightLocation, setHighlightLocation] = useState<ILocation | null>(null);
   
   // step execution state
-  const [executionSteps, setExecutionSteps] = useState<ExecutionStep[]>([]);
+  const [executionSteps, setExecutionSteps] = useState<IExecutionStep[]>([]);
   const [currentStepIndex, setCurrentStepIndex] = useState(-1);
   const [isExecuting, setIsExecuting] = useState(false);
   const autoPlayRef = useRef<NodeJS.Timeout | null>(null);
@@ -69,7 +74,7 @@ export const JsEngineProvider: React.FC<JsEngineProviderProps> = ({
     reset();
   };
 
-  const executeStep = (step: ExecutionStep) => {
+  const executeStep = (step: IExecutionStep) => {
     const { node, type } = step;
     
     if (type === "ExpressionStatement" && 
@@ -79,6 +84,12 @@ export const JsEngineProvider: React.FC<JsEngineProviderProps> = ({
       const args = node.expression.arguments;
       const logMessage = args.map((arg: any) => arg.value).join(" ");
       setConsoleLogs((prevLogs) => [...prevLogs, logMessage]);
+
+      const formattedArgs: Record<string, any> = {};
+      args.forEach((arg: any) => {
+        formattedArgs[arg.name || arg.value] = arg.value;
+      })
+      setCallStack((prevStack) => [...prevStack, { functionName: 'console.log()', variables: formattedArgs }]);
       
       const location = node.loc as ILocation;
       setHighlightLocation(location);
@@ -87,7 +98,7 @@ export const JsEngineProvider: React.FC<JsEngineProviderProps> = ({
     // TODO: handle other node types
   };
 
-  const undoStep = (step: ExecutionStep) => {
+  const undoStep = (step: IExecutionStep) => {
     const { node, type } = step;
     
     if (type === "ExpressionStatement" && 
@@ -95,6 +106,7 @@ export const JsEngineProvider: React.FC<JsEngineProviderProps> = ({
         node.expression.callee.object.name === "console") {
       
       setConsoleLogs((prevLogs) => prevLogs.slice(0, -1));
+      setCallStack((prevCallStack) => prevCallStack.slice(0, -1));
     }
     
     // TODO: handle undoing other node types
@@ -108,7 +120,7 @@ export const JsEngineProvider: React.FC<JsEngineProviderProps> = ({
     });
     setTree(_tree);
 
-    const steps: ExecutionStep[] = _tree.body.map((node: any, index: number) => ({
+    const steps: IExecutionStep[] = _tree.body.map((node: any, index: number) => ({
       node,
       index,
       type: node.type,
@@ -118,6 +130,7 @@ export const JsEngineProvider: React.FC<JsEngineProviderProps> = ({
     setExecutionSteps(steps);
     setCurrentStepIndex(-1);
     setConsoleLogs([]);
+    setCallStack([]);
     setHighlightLocation(null);
   };
 
@@ -198,6 +211,7 @@ export const JsEngineProvider: React.FC<JsEngineProviderProps> = ({
     pause();
     setCurrentStepIndex(-1);
     setConsoleLogs([]);
+    setCallStack([]);
     setHighlightLocation(null);
     setExecutionSteps(prev => 
       prev.map(step => ({ ...step, status: 'pending' as const }))

@@ -6,6 +6,7 @@ import type { IHighlightRange } from "./types/code-editor";
 import Navbar from "./components/navbar";
 import { useJsEngineContext } from "./context/js-engine-context";
 import Console from "./components/console";
+import CallStack from "./components/call-stack";
 
 function App() {
   const { source, handleSourceChange, highlightLocation } =
@@ -72,14 +73,7 @@ function App() {
           {/* column 2 */}
           <div className="flex flex-col gap-4 w-1/2">
             <div className="flex h-3/5 gap-4">
-              {/* Call Stack */}
-              <div className="w-1/2 relative p-1 bg-gradient-to-r from-red-500 via-orange-500 to-yellow-500 rounded">
-                <div className="h-full bg-black rounded relative">
-                  <Badge className="absolute text-md -top-3 left-1/2 -translate-x-1/2 px-2">
-                    Call Stack
-                  </Badge>
-                </div>
-              </div>
+              <CallStack />
 
               {/* Web APIs */}
               <div className="w-1/2 relative p-[4px] bg-gradient-to-r from-purple-600 via-purple-500 to-indigo-500 rounded">
