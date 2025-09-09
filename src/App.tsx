@@ -63,7 +63,7 @@ function App() {
             <div className="h-2/3">
               <CodeEditor
                 value={source}
-                handleChange={(value) => handleSourceChange(value)}
+                handleChange={(value) => handleSourceChange(value || "")}
                 onMount={handleMount}
               />
             </div>

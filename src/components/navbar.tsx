@@ -6,9 +6,7 @@ function Navbar() {
   const {
     tree,
     parseSource,
-    isExecuting,
-    canStepForward,
-    canStepBackward,
+    executionState,
     stepForward,
     stepBackward,
     playAll,
@@ -35,14 +33,14 @@ function Navbar() {
 
         <Button
           onClick={stepBackward}
-          disabled={!canStepBackward}
+          disabled={!executionState.canStepBackward}
           className="flex items-center gap-1 px-3 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-600 disabled:cursor-not-allowed rounded"
         >
           <SkipBack size={16} />
           Step Back
         </Button>
 
-        {isExecuting ? (
+        {executionState.isRunning ? (
           <Button
             onClick={pause}
             className="flex items-center gap-1 px-3 py-2 bg-orange-600 hover:bg-orange-700 rounded"
@@ -52,8 +50,8 @@ function Navbar() {
           </Button>
         ) : (
           <Button
-            onClick={playAll}
-            disabled={!canStepForward}
+            onClick={() => playAll(1000)}
+            disabled={!executionState.canStepForward}
             className="flex items-center gap-1 px-3 py-2 bg-green-600 hover:bg-green-700 disabled:bg-gray-600 disabled:cursor-not-allowed rounded"
           >
             <Play size={16} />
@@ -63,7 +61,7 @@ function Navbar() {
 
         <Button
           onClick={stepForward}
-          disabled={!canStepForward}
+          disabled={!executionState.canStepForward}
           className="flex items-center gap-1 px-3 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-600 disabled:cursor-not-allowed rounded"
         >
           <SkipForward size={16} />

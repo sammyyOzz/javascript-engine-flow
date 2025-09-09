@@ -1,7 +1,9 @@
 export type TCodeSnippetType =
   | "ExpressionStatement"
   | "FunctionDeclaration"
-  | "VariableDeclaration";
+  | "VariableDeclaration"
+  | "IfStatement"
+  | "SwitchStatement";
 
 export interface ILocation {
   start: {

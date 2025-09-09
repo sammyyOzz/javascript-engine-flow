@@ -16,7 +16,7 @@ function Console() {
           <RenderIf condition={consoleLogs && consoleLogs.length > 0}>
             {consoleLogs.map((log, index) => (
               <div key={index} className="text-green-400 text-sm">
-                <span className="text-gray-500">{"> "}</span>{log}
+                <span className="text-gray-500">{"> "}</span>{log.message}
               </div>
             ))}
           </RenderIf>

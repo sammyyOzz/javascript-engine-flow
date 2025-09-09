@@ -1,43 +1,36 @@
 import { simpleCode } from "@/constants/code-samples";
-import React, { createContext, useContext, useState, useRef } from "react";
-import { parse } from "abstract-syntax-tree";
-import type { ILocation, TCodeSnippetType } from "@/types/abstract-syntax-tree";
-
-interface IExecutionStep {
-  node: any;
-  index: number;
-  type: TCodeSnippetType;
-  status: 'pending' | 'executing' | 'completed';
-}
-
-interface ICallStackItem {
-  functionName: string;
-  variables: Record<string, any>;
-}
+import React, { createContext, useContext, useState, useEffect, useRef } from "react";
+import { JSEngine } from "@/classes/js-engine";
+import type { 
+  IExecutionState, 
+  ICallStackItem, 
+  IConsoleLog 
+} from "@/types/js-engine";
+import type { ILocation } from "@/types/abstract-syntax-tree";
 
 interface JsEngineContextType {
-  source: string | undefined;
-  handleSourceChange: (value: string | undefined) => void;
+  // source code management
+  source: string;
+  handleSourceChange: (value: string) => void;
   tree: any;
   parseSource: () => void;
+  
+  // execution state
+  executionState: IExecutionState;
   callStack: ICallStackItem[];
-  consoleLogs: string[];
-  highlightLocation?: ILocation | null;
+  consoleLogs: IConsoleLog[];
+  highlightLocation: ILocation | null;
   
-  // step-by-step execution
-  executionSteps: IExecutionStep[];
-  currentStepIndex: number;
-  isExecuting: boolean;
-  canStepForward: boolean;
-  canStepBackward: boolean;
-  
-  // controls
+  // control methods
   stepForward: () => void;
   stepBackward: () => void;
-  playAll: () => void;
+  playAll: (delay?: number) => void;
   pause: () => void;
   reset: () => void;
   goToStep: (index: number) => void;
+  
+  // engine instance
+  engine: JSEngine;
 }
 
 interface JsEngineProviderProps {
@@ -57,218 +50,96 @@ export const useJsEngineContext = () => {
 export const JsEngineProvider: React.FC<JsEngineProviderProps> = ({
   children,
 }) => {
-  const [source, setSource] = useState<string | undefined>(simpleCode);
-  const [tree, setTree] = useState(null);
+  const engineRef = useRef<JSEngine>(new JSEngine());
+  const engine = engineRef.current;
+
+  const [source, setSource] = useState<string>(simpleCode);
+  const [tree, setTree] = useState<any>(null);
+  const [executionState, setExecutionState] = useState<IExecutionState>({
+    steps: [],
+    currentIndex: -1,
+    isRunning: false,
+    canStepForward: false,
+    canStepBackward: false,
+    highlightLocation: null
+  });
   const [callStack, setCallStack] = useState<ICallStackItem[]>([]);
-  const [consoleLogs, setConsoleLogs] = useState<string[]>([]);
-  const [highlightLocation, setHighlightLocation] = useState<ILocation | null>(null);
-  
-  // step execution state
-  const [executionSteps, setExecutionSteps] = useState<IExecutionStep[]>([]);
-  const [currentStepIndex, setCurrentStepIndex] = useState(-1);
-  const [isExecuting, setIsExecuting] = useState(false);
-  const autoPlayRef = useRef<NodeJS.Timeout | null>(null);
+  const [consoleLogs, setConsoleLogs] = useState<IConsoleLog[]>([]);
 
-  const handleSourceChange = (value: string | undefined) => {
+  // subscribe to engine events
+  useEffect(() => {
+    const unsubscribeExecution = engine.subscribeToExecution(setExecutionState);
+    const unsubscribeCallStack = engine.subscribeToCallStack(setCallStack);
+    const unsubscribeConsole = engine.subscribeToConsole(setConsoleLogs);
+
+    // initialize with current source code
+    engine.setSource(source);
+    
+    return () => {
+      unsubscribeExecution();
+      unsubscribeCallStack();
+      unsubscribeConsole();
+    };
+  }, []);
+
+  useEffect(() => {
+    engine.setSource(source);
+    setTree(null);
+  }, [source]);
+
+  const handleSourceChange = (value: string) => {
     setSource(value);
-    reset();
-  };
-
-  const executeStep = (step: IExecutionStep) => {
-    const { node, type } = step;
-    
-    if (type === "ExpressionStatement" && 
-        node.expression.type === "CallExpression" && 
-        node.expression.callee.object.name === "console") {
-      
-      const args = node.expression.arguments;
-      const logMessage = args.map((arg: any) => arg.value).join(" ");
-      setConsoleLogs((prevLogs) => [...prevLogs, logMessage]);
-
-      const formattedArgs: Record<string, any> = {};
-      args.forEach((arg: any) => {
-        formattedArgs[arg.name || arg.value] = arg.value;
-      })
-      setCallStack((prevStack) => [...prevStack, { functionName: 'console.log()', variables: formattedArgs }]);
-      
-      const location = node.loc as ILocation;
-      setHighlightLocation(location);
-    }
-    
-    // TODO: handle other node types
-  };
-
-  const undoStep = (step: IExecutionStep) => {
-    const { node, type } = step;
-    
-    if (type === "ExpressionStatement" && 
-        node.expression.type === "CallExpression" && 
-        node.expression.callee.object.name === "console") {
-      
-      setConsoleLogs((prevLogs) => prevLogs.slice(0, -1));
-      setCallStack((prevCallStack) => prevCallStack.slice(0, -1));
-    }
-    
-    // TODO: handle undoing other node types
   };
 
   const parseSource = () => {
-    const _tree = parse(source, {
-      loc: true,
-      range: true,
-      sourceType: "script",
-    });
-    setTree(_tree);
-
-    const steps: IExecutionStep[] = _tree.body.map((node: any, index: number) => ({
-      node,
-      index,
-      type: node.type,
-      status: 'pending'
-    }));
-
-    setExecutionSteps(steps);
-    setCurrentStepIndex(-1);
-    setConsoleLogs([]);
-    setCallStack([]);
-    setHighlightLocation(null);
+    engine.parseAndLoad();
+    setTree(engine.getTree());
   };
 
   const stepForward = () => {
-    if (currentStepIndex < executionSteps.length - 1) {
-      const nextIndex = currentStepIndex + 1;
-      const step = executionSteps[nextIndex];
-      
-      setExecutionSteps(prev => 
-        prev.map((s, i) => 
-          i === nextIndex 
-            ? { ...s, status: 'executing' }
-            : i < nextIndex 
-              ? { ...s, status: 'completed' }
-              : { ...s, status: 'pending' }
-        )
-      );
-      
-      executeStep(step);
-      setCurrentStepIndex(nextIndex);
-    }
+    engine.stepForward();
   };
 
   const stepBackward = () => {
-    if (currentStepIndex >= 0) {
-      const currentStep = executionSteps[currentStepIndex];
-      undoStep(currentStep);
-      
-      const prevIndex = currentStepIndex - 1;
-      setCurrentStepIndex(prevIndex);
-      
-      setExecutionSteps(prev => 
-        prev.map((s, i) => 
-          i === prevIndex 
-            ? { ...s, status: 'executing' }
-            : i < prevIndex 
-              ? { ...s, status: 'completed' }
-              : { ...s, status: 'pending' }
-        )
-      );
-      
-      // update highlight to previous step or clear if at beginning
-      if (prevIndex >= 0) {
-        const prevStep = executionSteps[prevIndex];
-        setHighlightLocation(prevStep.node.loc as ILocation);
-      } else {
-        setHighlightLocation(null);
-      }
-    }
+    engine.stepBackward();
   };
 
-  const playAll = () => {
-    if (isExecuting) return;
-    
-    setIsExecuting(true);
-    
-    const executeNextStep = () => {
-      if (currentStepIndex < executionSteps.length - 1) {
-        stepForward();
-        autoPlayRef.current = setTimeout(executeNextStep, 1000); // 1 second delay
-      } else {
-        setIsExecuting(false);
-      }
-    };
-    
-    executeNextStep();
+  const playAll = (delay?: number) => {
+    engine.playAll(delay);
   };
 
   const pause = () => {
-    setIsExecuting(false);
-    if (autoPlayRef.current) {
-      clearTimeout(autoPlayRef.current);
-      autoPlayRef.current = null;
-    }
+    engine.pause();
   };
 
   const reset = () => {
-    pause();
-    setCurrentStepIndex(-1);
-    setConsoleLogs([]);
-    setCallStack([]);
-    setHighlightLocation(null);
-    setExecutionSteps(prev => 
-      prev.map(step => ({ ...step, status: 'pending' as const }))
-    );
+    engine.reset();
   };
 
   const goToStep = (index: number) => {
-    if (index < -1 || index >= executionSteps.length) return;
-    
-    pause();
-    
-    reset();
-    
-    // execute steps up to the target index
-    for (let i = 0; i <= index; i++) {
-      const step = executionSteps[i];
-      executeStep(step);
-    }
-    
-    setCurrentStepIndex(index);
-    setExecutionSteps(prev => 
-      prev.map((s, i) => 
-        i === index 
-          ? { ...s, status: 'executing' }
-          : i < index 
-            ? { ...s, status: 'completed' }
-            : { ...s, status: 'pending' }
-      )
-    );
+    engine.goToStep(index);
   };
 
-  const canStepForward = currentStepIndex < executionSteps.length - 1;
-  const canStepBackward = currentStepIndex >= 0;
+  const contextValue: JsEngineContextType = {
+    source,
+    handleSourceChange,
+    tree,
+    parseSource,
+    executionState,
+    callStack,
+    consoleLogs,
+    highlightLocation: executionState.highlightLocation,
+    stepForward,
+    stepBackward,
+    playAll,
+    pause,
+    reset,
+    goToStep,
+    engine
+  };
 
   return (
-    <JsEngineContext.Provider
-      value={{
-        source,
-        handleSourceChange,
-        tree,
-        parseSource,
-        callStack,
-        highlightLocation,
-        consoleLogs,
-        executionSteps,
-        currentStepIndex,
-        isExecuting,
-        canStepForward,
-        canStepBackward,
-        stepForward,
-        stepBackward,
-        playAll,
-        pause,
-        reset,
-        goToStep,
-      }}
-    >
+    <JsEngineContext.Provider value={contextValue}>
       {children}
     </JsEngineContext.Provider>
   );
