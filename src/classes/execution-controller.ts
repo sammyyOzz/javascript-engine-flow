@@ -1,7 +1,7 @@
 import type { ILocation } from "@/types/abstract-syntax-tree";
 import type { CallStack } from "./call-stack";
 import type { Console } from "./console";
-import type { IExecutionState, IExecutionStep, TExecutionListener } from "@/types/js-engine";
+import type { IConsoleLog, IExecutionState, IExecutionStep, TExecutionListener } from "@/types/js-engine";
 
 export class ExecutionController {
   private steps: IExecutionStep[] = [];
@@ -119,7 +119,8 @@ export class ExecutionController {
       
       const args = node.expression.arguments;
       const logMessage = args.map((arg: any) => arg.value).join(" ");
-      this.console.log(logMessage);
+      const logType: IConsoleLog['type'] = node.expression.callee.property?.name || 'log';
+      this.console.log(logMessage, logType);
 
       const formattedArgs: Record<string, any> = {};
       args.forEach((arg: any) => {
@@ -127,7 +128,7 @@ export class ExecutionController {
       });
       
       this.callStack.push({ 
-        functionName: 'console.log()', 
+        functionName: `console.${logType}()`, 
         variables: formattedArgs 
       });
     }

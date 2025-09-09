@@ -1,6 +1,14 @@
 import { useJsEngineContext } from "@/context/js-engine-context";
 import { Badge } from "./ui/badge";
 import { RenderIf } from "./render-if";
+import type { IConsoleLog } from "@/types/js-engine";
+
+const consoleLogColors: Record<IConsoleLog["type"], string> = {
+  log: "text-green-400",
+  error: "text-red-400",
+  warn: "text-yellow-400",
+  info: "text-blue-400"
+};
 
 function Console() {
   const { consoleLogs } = useJsEngineContext();
@@ -15,7 +23,7 @@ function Console() {
         <div className="flex flex-col gap-2">
           <RenderIf condition={consoleLogs && consoleLogs.length > 0}>
             {consoleLogs.map((log, index) => (
-              <div key={index} className="text-green-400 text-sm">
+              <div key={index} className={`text-sm ${consoleLogColors[log.type]}`}>
                 <span className="text-gray-500">{"> "}</span>{log.message}
               </div>
             ))}

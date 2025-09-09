@@ -3,7 +3,11 @@ export type TCodeSnippetType =
   | "FunctionDeclaration"
   | "VariableDeclaration"
   | "IfStatement"
-  | "SwitchStatement";
+  | "SwitchStatement"
+  | "ForStatement"
+  | "WhileStatement"
+  | "DoWhileStatement"
+  | "ReturnStatement";
 
 export interface ILocation {
   start: {
