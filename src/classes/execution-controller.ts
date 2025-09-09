@@ -1,7 +1,8 @@
 import type { ILocation } from "@/types/abstract-syntax-tree";
 import type { CallStack } from "./call-stack";
 import type { Console } from "./console";
-import type { IConsoleLog, IExecutionState, IExecutionStep, TExecutionListener } from "@/types/js-engine";
+import type { ICallStackItem, IConsoleLog, IExecutionState, IExecutionStep, TExecutionListener } from "@/types/js-engine";
+import { generateUniqueId } from "@/utils/generate-id";
 
 export class ExecutionController {
   private steps: IExecutionStep[] = [];
@@ -11,6 +12,7 @@ export class ExecutionController {
   private listeners: Set<(state: IExecutionState) => void> = new Set();
   private callStack: CallStack;
   private console: Console;
+  private poppedStackItems: ICallStackItem[] = [];
   // private parser: ASTParser;
 
   constructor(callStack: CallStack, console: Console) {
@@ -29,6 +31,13 @@ export class ExecutionController {
     if (!this.canStepForward()) return false;
 
     this.currentIndex++;
+
+    // save popped items for possible redo;
+    const poppedItem = this.callStack.pop();
+    if (poppedItem) {
+      this.poppedStackItems.push(poppedItem)
+    }
+
     const step = this.steps[this.currentIndex];
     
     this.updateStepStatuses();
@@ -45,6 +54,14 @@ export class ExecutionController {
     this.undoStep(currentStep);
     
     this.currentIndex--;
+
+    if (this.poppedStackItems.length > 0) {
+      const itemToRestore = this.poppedStackItems.pop();
+      if (itemToRestore) {
+        this.callStack.push(itemToRestore);
+      }
+    }
+
     this.updateStepStatuses();
     this.notifyListeners();
     
@@ -112,6 +129,8 @@ export class ExecutionController {
 
   private executeStep(step: IExecutionStep): void {
     const { node, type } = step;
+
+    const id = generateUniqueId("callstack-item");
     
     if (type === "ExpressionStatement" && 
         node.expression.type === "CallExpression" && 
@@ -128,6 +147,7 @@ export class ExecutionController {
       });
       
       this.callStack.push({ 
+        id,
         functionName: `console.${logType}()`, 
         variables: formattedArgs 
       });
@@ -135,6 +155,7 @@ export class ExecutionController {
     
     if (type === "FunctionDeclaration") {
       this.callStack.push({
+        id,
         functionName: node.id.name,
         variables: {},
         executionContext: 'declaration'

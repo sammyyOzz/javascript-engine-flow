@@ -2,7 +2,7 @@ import type { ICallStackItem, TCallStackListener } from "@/types/js-engine";
 
 export class CallStack {
   private stack: ICallStackItem[] = [];
-  private listeners: Set<(stack: ICallStackItem[]) => void> = new Set();
+  private listeners: Set<TCallStackListener> = new Set();
 
   push(item: ICallStackItem): void {
     this.stack.push(item);

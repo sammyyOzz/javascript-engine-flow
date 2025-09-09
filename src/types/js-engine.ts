@@ -8,6 +8,7 @@ export interface IExecutionStep {
 }
 
 export interface ICallStackItem {
+  id: string;
   functionName: string;
   variables: Record<string, any>;
   executionContext?: string;

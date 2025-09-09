@@ -2,7 +2,7 @@ import type { IConsoleLog, TConsoleListener } from "@/types/js-engine";
 
 export class Console {
   private logs: IConsoleLog[] = [];
-  private listeners: Set<(logs: IConsoleLog[]) => void> = new Set();
+  private listeners: Set<TConsoleListener> = new Set();
 
   log(message: string, type: IConsoleLog['type'] = 'log'): void {
     const logEntry: IConsoleLog = {
