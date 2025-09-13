@@ -1,6 +1,6 @@
 import { simpleCode } from "@/constants/code-samples";
 import React, { createContext, useContext, useState, useEffect, useRef } from "react";
-import { JSEngine } from "@/classes/js-engine";
+import { JSEngine } from "@/core/js-engine";
 import type { 
   IExecutionState, 
   ICallStackItem, 

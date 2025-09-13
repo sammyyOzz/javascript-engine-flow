@@ -1,4 +1,5 @@
 import { Editor } from "@monaco-editor/react";
+import { MonacoSkeleton } from "./skeletons/monaco-skeleton";
 
 interface CodeEditorProps {
   value: string | undefined;
@@ -14,6 +15,7 @@ function CodeEditor({ value, handleChange, ...props }: CodeEditorProps) {
         height="100%"
         theme="hc-black"
         defaultLanguage="javascript"
+        loading={<MonacoSkeleton />}
         value={value}
         onChange={handleChange}
         {...props}

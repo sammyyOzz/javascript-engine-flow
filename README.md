@@ -64,8 +64,9 @@
  │   ├── components/        # React components (CallStack, CodeEditor, Console, Navbar, etc.)
  │   ├── constants/         # Static code samples
  │   ├── context/           # React context for global state
+ │   ├── core/              # Core logic (JS-Engine, Execution Controller, CallStack, OOP, etc.)
  │   ├── hooks/             # Custom React hooks
- │   ├── lib/               # Core logic (OOP, Observer Pattern, utilities)
+ │   ├── utils/             # Utility functions
  │   ├── types/             # TypeScript type definitions
  │   ├── App.tsx            # Main app component
  │   └── main.tsx           # Entry point
