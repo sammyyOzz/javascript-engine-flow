@@ -8,7 +8,7 @@ function CallStack() {
 
   return (
     <div className="w-1/2 relative p-1 bg-gradient-to-r from-red-500 via-orange-500 to-yellow-500 rounded">
-      <div className="flex flex-col justify-end h-full pt-4 bg-black rounded relative overflow-hidden">
+      <div className="flex flex-col justify-end h-full pt-4 bg-black rounded relative">
         <Badge className="absolute text-md -top-3 left-1/2 -translate-x-1/2 px-2">
           Call Stack
         </Badge>
@@ -37,11 +37,13 @@ function CallStack() {
                     <em>Args:</em>
                   </p>
                   <ul>
-                    {Object.entries(item.variables).map(([varName, varValue]) => (
-                      <li key={varName} className="text-xs">
-                        {String(varValue)}
-                      </li>
-                    ))}
+                    {Object.entries(item.variables).map(
+                      ([varName, varValue]) => (
+                        <li key={varName} className="text-xs">
+                          {String(varValue)}
+                        </li>
+                      ),
+                    )}
                   </ul>
                 </motion.div>
               </RenderIf>
