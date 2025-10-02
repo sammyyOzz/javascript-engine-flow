@@ -13,8 +13,11 @@ function Navbar() {
     pause,
     reset,
   } = useJsEngineContext();
-  
+
+  console.log("ast");
   console.log(tree);
+  console.log("steps");
+  console.log(executionState.steps);
 
   const handleParseClick = () => {
     try {

@@ -3,4 +3,7 @@ console.log("B");
 
 function logC() {
   console.log("C");
-}`;
+}
+
+logC();
+`;

@@ -1,7 +1,13 @@
 import type { ILocation } from "@/types/abstract-syntax-tree";
 import type { CallStack } from "./call-stack";
 import type { Console } from "./console";
-import type { ICallStackItem, IConsoleLog, IExecutionState, IExecutionStep, TExecutionListener } from "@/types/js-engine";
+import type {
+  ICallStackItem,
+  IConsoleLog,
+  IExecutionState,
+  IExecutionStep,
+  TExecutionListener,
+} from "@/types/js-engine";
 import { generateUniqueId } from "@/utils/generate-id";
 
 export class ExecutionController {
@@ -35,15 +41,15 @@ export class ExecutionController {
     // save popped items for possible redo;
     const poppedItem = this.callStack.pop();
     if (poppedItem) {
-      this.poppedStackItems.push(poppedItem)
+      this.poppedStackItems.push(poppedItem);
     }
 
     const step = this.steps[this.currentIndex];
-    
+
     this.updateStepStatuses();
     this.executeStep(step);
     this.notifyListeners();
-    
+
     return true;
   }
 
@@ -52,7 +58,7 @@ export class ExecutionController {
 
     const currentStep = this.steps[this.currentIndex];
     this.undoStep(currentStep);
-    
+
     this.currentIndex--;
 
     if (this.poppedStackItems.length > 0) {
@@ -64,16 +70,16 @@ export class ExecutionController {
 
     this.updateStepStatuses();
     this.notifyListeners();
-    
+
     return true;
   }
 
   playAll(delay: number = 1000): void {
     if (this.isRunning) return;
-    
+
     this.isRunning = true;
     this.notifyListeners();
-    
+
     const executeNext = () => {
       if (this.stepForward()) {
         this.autoPlayTimer = setTimeout(executeNext, delay);
@@ -81,7 +87,7 @@ export class ExecutionController {
         this.pause();
       }
     };
-    
+
     executeNext();
   }
 
@@ -99,95 +105,100 @@ export class ExecutionController {
     this.currentIndex = -1;
     this.callStack.clear();
     this.console.clear();
-    
-    this.steps = this.steps.map(step => ({ 
-      ...step, 
-      status: 'pending' as const 
+
+    this.steps = this.steps.map((step) => ({
+      ...step,
+      status: "pending" as const,
     }));
-    
+
     this.notifyListeners();
   }
 
   goToStep(index: number): boolean {
     if (index < -1 || index >= this.steps.length) return false;
-    
+
     this.pause();
     this.reset();
-    
+
     // execute steps up to target index
     for (let i = 0; i <= index; i++) {
       const step = this.steps[i];
       this.executeStep(step);
     }
-    
+
     this.currentIndex = index;
     this.updateStepStatuses();
     this.notifyListeners();
-    
+
     return true;
   }
 
   private executeStep(step: IExecutionStep): void {
     const { node, type } = step;
+    const id = generateUniqueId();
 
-    const id = generateUniqueId("callstack-item");
-    
-    if (type === "ExpressionStatement" && 
-        node.expression.type === "CallExpression" && 
-        node.expression.callee.object?.name === "console") {
-      
-      const args = node.expression.arguments;
+    // only handle expression statements with call expressions
+    if (
+      type !== "ExpressionStatement" ||
+      node.expression.type !== "CallExpression"
+    ) {
+      return;
+    }
+
+    const { callee, arguments: args } = node.expression;
+
+    // handle console logs
+    if (callee.object?.name === "console") {
+      const logType: IConsoleLog["type"] = callee.property?.name || "log";
       const logMessage = args.map((arg: any) => arg.value).join(" ");
-      const logType: IConsoleLog['type'] = node.expression.callee.property?.name || 'log';
+
       this.console.log(logMessage, logType);
 
       const formattedArgs: Record<string, any> = {};
       args.forEach((arg: any) => {
         formattedArgs[arg.name || arg.value] = arg.value;
       });
-      
-      this.callStack.push({ 
-        id,
-        functionName: `console.${logType}()`, 
-        variables: formattedArgs 
-      });
-    }
-    
-    if (type === "FunctionDeclaration") {
+
       this.callStack.push({
         id,
-        functionName: node.id.name,
-        variables: {},
-        executionContext: 'declaration'
+        functionName: `console.${logType}()`,
+        variables: formattedArgs,
       });
+      return;
     }
-    
-    // TODO: Add more node type handlers
+
+    // handle other function calls
+    this.callStack.push({
+      id,
+      functionName: `${callee.name}()`,
+      variables: {},
+    });
   }
 
   private undoStep(step: IExecutionStep): void {
     const { type } = step;
-    
+
     if (type === "ExpressionStatement") {
       this.console.removeLastLog();
       this.callStack.pop();
     }
-    
+
     if (type === "FunctionDeclaration") {
       this.callStack.pop();
     }
-    
+
     // TODO: Add more undo handlers
   }
 
   private updateStepStatuses(): void {
     this.steps = this.steps.map((step, i) => ({
       ...step,
-      status: i === this.currentIndex 
-        ? 'executing' as const
-        : i < this.currentIndex 
-          ? 'completed' as const
-          : 'pending' as const
+      status:
+        i === this.currentIndex
+          ? ("executing" as const)
+          : i < this.currentIndex
+            ? ("completed" as const)
+            : ("pending" as const),
     }));
   }
 
@@ -215,7 +226,7 @@ export class ExecutionController {
       isRunning: this.isRunning,
       canStepForward: this.canStepForward(),
       canStepBackward: this.canStepBackward(),
-      highlightLocation: this.getHighlightLocation()
+      highlightLocation: this.getHighlightLocation(),
     };
   }
 
@@ -225,6 +236,6 @@ export class ExecutionController {
   }
 
   private notifyListeners(): void {
-    this.listeners.forEach(listener => listener(this.getExecutionState()));
+    this.listeners.forEach((listener) => listener(this.getExecutionState()));
   }
 }
