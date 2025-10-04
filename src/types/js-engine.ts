@@ -1,10 +1,13 @@
 import type { ILocation, TCodeSnippetType } from "./abstract-syntax-tree";
 
 export interface IExecutionStep {
-  node: any;
+  node: {
+    type: TCodeSnippetType;
+    [anyProp: string]: any;
+  };
   index: number;
-  type: TCodeSnippetType;
-  status: 'pending' | 'executing' | 'completed';
+  type: "ConsoleLog" | "FunctionCallEntry" | "FunctionCallExit";
+  status: "pending" | "executing" | "completed";
 }
 
 export interface ICallStackItem {
@@ -17,7 +20,7 @@ export interface ICallStackItem {
 export interface IConsoleLog {
   message: string;
   timestamp: number;
-  type: 'log' | 'error' | 'warn' | 'info';
+  type: "log" | "error" | "warn" | "info";
 }
 
 export interface IExecutionState {

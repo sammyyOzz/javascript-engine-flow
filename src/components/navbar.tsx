@@ -4,7 +4,7 @@ import { Pause, Play, RotateCcw, SkipBack, SkipForward } from "lucide-react";
 
 function Navbar() {
   const {
-    tree,
+    // tree,
     parseSource,
     executionState,
     stepForward,
@@ -14,10 +14,9 @@ function Navbar() {
     reset,
   } = useJsEngineContext();
 
-  console.log("ast");
-  console.log(tree);
-  console.log("steps");
-  console.log(executionState.steps);
+  // console.log("ast");
+  // console.log(tree);
+  // console.log("steps", executionState.steps);
 
   const handleParseClick = () => {
     try {

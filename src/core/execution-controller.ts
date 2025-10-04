@@ -38,12 +38,6 @@ export class ExecutionController {
 
     this.currentIndex++;
 
-    // save popped items for possible redo;
-    const poppedItem = this.callStack.pop();
-    if (poppedItem) {
-      this.poppedStackItems.push(poppedItem);
-    }
-
     const step = this.steps[this.currentIndex];
 
     this.updateStepStatuses();
@@ -137,9 +131,25 @@ export class ExecutionController {
     const { node, type } = step;
     const id = generateUniqueId();
 
+    if (this.currentIndex > 0) {
+      const prevStep = this.steps[this.currentIndex - 1];
+
+      if (
+        prevStep.type === "ConsoleLog" ||
+        prevStep.type === "FunctionCallExit"
+      ) {
+        const poppedItem = this.callStack.pop();
+        if (poppedItem) {
+          this.poppedStackItems.push(poppedItem);
+        }
+      }
+    }
+
+    if (type === "FunctionCallExit") return;
+
     // only handle expression statements with call expressions
     if (
-      type !== "ExpressionStatement" ||
+      node.type !== "ExpressionStatement" ||
       node.expression.type !== "CallExpression"
     ) {
       return;
@@ -176,14 +186,14 @@ export class ExecutionController {
   }
 
   private undoStep(step: IExecutionStep): void {
-    const { type } = step;
+    const { node } = step;
 
-    if (type === "ExpressionStatement") {
+    if (node.type === "ExpressionStatement") {
       this.console.removeLastLog();
       this.callStack.pop();
     }
 
-    if (type === "FunctionDeclaration") {
+    if (node.type === "FunctionDeclaration") {
       this.callStack.pop();
     }
 

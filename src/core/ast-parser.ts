@@ -41,17 +41,25 @@ export class ASTParser {
           const funcDecl = functions.get(funcName);
 
           if (funcDecl) {
-            // First add the function call itself
+            // Add the function call entry
             steps.push({
               node,
               index: stepIndex++,
-              type: node.type,
+              type: "FunctionCallEntry",
               status: "pending" as const,
             });
 
-            // Then process the function body
+            // Process the function body
             funcDecl.body.body.forEach((stmt: any) => {
               processNode(stmt);
+            });
+
+            // Add the function call exit
+            steps.push({
+              node,
+              index: stepIndex++,
+              type: "FunctionCallExit",
+              status: "pending" as const,
             });
             return;
           }
@@ -62,7 +70,7 @@ export class ASTParser {
       steps.push({
         node,
         index: stepIndex++,
-        type: node.type,
+        type: "ConsoleLog", // node.type,
         status: "pending" as const,
       });
     };
